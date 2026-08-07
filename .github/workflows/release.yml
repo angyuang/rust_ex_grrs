@@ -12,51 +12,34 @@ permissions:
   packages: write
 
 jobs:
-  # ============================================
-  # 第一步：检查版本变化并自动打标签
-  # ============================================
   check-version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      tag_exists: ${{ steps.version.outputs.tag_exists }}
       should_release: ${{ steps.version.outputs.should_release }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get version from Cargo.toml
+      - name: Get version
         id: version
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $VERSION"
           
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "tag_exists=true" >> $GITHUB_OUTPUT
             echo "should_release=false" >> $GITHUB_OUTPUT
             echo "Tag v$VERSION already exists, skipping release"
           else
-            echo "tag_exists=false" >> $GITHUB_OUTPUT
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "Tag v$VERSION does not exist, will create release"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "v$VERSION" -m "Auto-release version $VERSION"
+            git push origin "v$VERSION"
+            echo "Created and pushed tag v$VERSION"
           fi
 
-      - name: Create and push tag
-        if: steps.version.outputs.tag_exists == 'false'
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" -m "Auto-release version $VERSION"
-          git push origin "v$VERSION"
-          echo "Created and pushed tag v$VERSION"
-
-  # ============================================
-  # 第二步：构建所有平台
-  # ============================================
   build:
     name: Build ${{ matrix.target }}
     needs: check-version
@@ -68,74 +51,46 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             asset_name: grrs
-            archive_name: grrs-linux-x64
+            display_name: grrs-linux-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset_name: grrs.exe
-            archive_name: grrs-windows-x64.exe
+            display_name: grrs-windows-x64.exe
           - os: macos-latest
             target: x86_64-apple-darwin
             asset_name: grrs
-            archive_name: grrs-macos-x64
+            display_name: grrs-macos-x64
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: grrs
-            archive_name: grrs-macos-arm64
+            display_name: grrs-macos-arm64
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build release binary
+      - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: List build artifacts (Linux/Mac)
-        if: runner.os != 'Windows'
-        run: |
-          echo "Contents of target/${{ matrix.target }}/release/:"
-          ls -la target/${{ matrix.target }}/release/ || echo "Directory not found"
-
-      - name: List build artifacts (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          echo "Contents of target/${{ matrix.target }}/release/:"
-          dir target\${{ matrix.target }}\release\ || echo "Directory not found"
-
-      - name: Upload to Actions Artifacts
+      - name: Upload to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.archive_name }}
+          name: ${{ matrix.display_name }}
           path: target/${{ matrix.target }}/release/${{ matrix.asset_name }}
           if-no-files-found: error
 
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: target/${{ matrix.target }}/release/${{ matrix.asset_name }}
-          tag_name: v${{ needs.check-version.outputs.version }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ============================================
-  # 第三步：创建 Release 页面（汇总）
-  # ============================================
+  # 统一创建 Release
   release:
-    name: Create Release Page
+    name: Create Release
     needs: [check-version, build]
     if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -147,39 +102,17 @@ jobs:
       - name: List downloaded files
         run: |
           echo "Downloaded artifacts:"
-          ls -la artifacts/
           find artifacts -type f -exec ls -lh {} \;
 
-      - name: Get version
-        id: version
-        run: |
-          VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Generate Release Notes
-        id: release_notes
-        run: |
-          cat > release_notes.md << 'EOF'
-          ## 🚀 Auto-Release
-          
-          This release was automatically created from commit `${{ github.sha }}`
-          
-          ### 📦 Downloads
-          
-          | Platform | Download |
-          |----------|----------|
-          | **Linux (x64)** | `grrs-linux-x64` |
-          | **Windows (x64)** | `grrs-windows-x64.exe` |
-          | **macOS (Intel)** | `grrs-macos-x64` |
-          | **macOS (Apple Silicon)** | `grrs-macos-arm64` |
-          
-          ### 🔧 Usage
-          
-          ```bash
-          # Download and extract
-          # Linux/macOS
-          chmod +x grrs
-          ./grrs "pattern" file.txt
-          
-          # Windows
-          grrs.exe "pattern" file.txt
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: Release v${{ needs.check-version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
