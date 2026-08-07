@@ -103,16 +103,21 @@ jobs:
           echo "Downloaded artifacts:"
           find artifacts -type f -exec ls -lh {} \;
 
-      - name: Create Release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "artifacts/**/*"
-          tag: v${{ needs.check-version.outputs.version }}
-          name: Release v${{ needs.check-version.outputs.version }}
-          generateReleaseNotes: true
-          draft: false
-          prerelease: false
-          allowUpdates: true
-          replacesArtifacts: true
+      - name: Create Release with gh CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 检查 Release 是否已存在，如果存在则删除（用于重新发布）
+          if gh release view v${{ needs.check-version.outputs.version }} >/dev/null 2>&1; then
+            echo "⚠️ Release v${{ needs.check-version.outputs.version }} already exists, deleting..."
+            gh release delete v${{ needs.check-version.outputs.version }} --yes
+          fi
+          
+          # 创建新的 Release
+          gh release create v${{ needs.check-version.outputs.version }} \
+            artifacts/**/* \
+            --title "Release v${{ needs.check-version.outputs.version }}" \
+            --generate-notes \
+            --latest
+          
+          echo "✅ Release v${{ needs.check-version.outputs.version }} created successfully"
