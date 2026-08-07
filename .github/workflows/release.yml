@@ -103,14 +103,20 @@ jobs:
           echo "Before renaming:"
           find artifacts -type f -exec ls -lh {} \;
           
-          # 重命名文件，保留平台信息
-          mv artifacts/grrs-linux-x64/grrs artifacts/grrs-linux-x64
-          mv artifacts/grrs-macos-x64/grrs artifacts/grrs-macos-x64
-          mv artifacts/grrs-macos-arm64/grrs artifacts/grrs-macos-arm64
-          mv artifacts/grrs-windows-x64.exe/grrs.exe artifacts/grrs-windows-x64.exe
+          # 创建新目录存放重命名后的文件
+          mkdir -p artifacts_renamed
           
-          # 清理空目录
-          rm -rf artifacts/*/
+          # 移动并重命名文件
+          mv artifacts/grrs-linux-x64/grrs artifacts_renamed/grrs-linux-x64
+          mv artifacts/grrs-macos-x64/grrs artifacts_renamed/grrs-macos-x64
+          mv artifacts/grrs-macos-arm64/grrs artifacts_renamed/grrs-macos-arm64
+          mv artifacts/grrs-windows-x64.exe/grrs.exe artifacts_renamed/grrs-windows-x64.exe
+          
+          # 删除旧目录
+          rm -rf artifacts
+          
+          # 重命名新目录
+          mv artifacts_renamed artifacts
           
           echo "Files ready for upload:"
           ls -la artifacts/
@@ -127,7 +133,7 @@ jobs:
             gh release delete "v$VERSION" --yes
           fi
           
-          # 创建新的 Release，上传 artifacts 目录下的所有文件
+          # 创建新的 Release
           gh release create "v$VERSION" \
             artifacts/* \
             --title "Release v$VERSION" \
