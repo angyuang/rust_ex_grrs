@@ -3,11 +3,11 @@ name: Auto Build and Release
 on:
   push:
     branches:
-      - main  # 推送到 main 分支时触发
-  workflow_dispatch:  # 允许手动触发
+      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write  # 需要写入权限来创建标签和 Release
+  contents: write
   actions: write
   packages: write
 
@@ -25,17 +25,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取所有历史记录和标签
+          fetch-depth: 0
 
       - name: Get version from Cargo.toml
         id: version
         run: |
-          # 从 Cargo.toml 读取版本号
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
           
-          # 检查标签是否已存在
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "tag_exists=true" >> $GITHUB_OUTPUT
             echo "should_release=false" >> $GITHUB_OUTPUT
@@ -96,10 +94,17 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: List build artifacts (debug)
+      - name: List build artifacts (Linux/Mac)
+        if: runner.os != 'Windows'
         run: |
           echo "Contents of target/${{ matrix.target }}/release/:"
           ls -la target/${{ matrix.target }}/release/ || echo "Directory not found"
+
+      - name: List build artifacts (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "Contents of target/${{ matrix.target }}/release/:"
+          dir target\${{ matrix.target }}\release\ || echo "Directory not found"
 
       - name: Upload to Actions Artifacts
         uses: actions/upload-artifact@v4
