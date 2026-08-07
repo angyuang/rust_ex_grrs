@@ -103,21 +103,16 @@ jobs:
           echo "Downloaded artifacts:"
           find artifacts -type f -exec ls -lh {} \;
 
-      - name: Prepare files for upload
-        run: |
-          # 将文件移动到统一目录，避免子目录结构
-          mkdir -p release_files
-          find artifacts -type f -exec cp {} release_files/ \;
-          ls -la release_files/
-
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          files: release_files/*
-          tag_name: v${{ needs.check-version.outputs.version }}
+          artifacts: "artifacts/**/*"
+          tag: v${{ needs.check-version.outputs.version }}
           name: Release v${{ needs.check-version.outputs.version }}
-          generate_release_notes: true
+          generateReleaseNotes: true
           draft: false
           prerelease: false
+          allowUpdates: true
+          replacesArtifacts: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
