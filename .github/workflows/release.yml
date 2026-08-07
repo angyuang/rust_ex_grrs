@@ -98,26 +98,37 @@ jobs:
         with:
           path: artifacts
 
-      - name: List downloaded files
+      - name: Move files to root directory
         run: |
-          echo "Downloaded artifacts:"
+          echo "Before moving:"
           find artifacts -type f -exec ls -lh {} \;
+          
+          # 将所有子目录中的文件移动到 artifacts 根目录
+          find artifacts -mindepth 2 -type f -exec mv -v {} artifacts/ \;
+          
+          # 删除空的子目录
+          find artifacts -mindepth 1 -type d -empty -delete
+          
+          echo "After moving:"
+          ls -la artifacts/
 
       - name: Create Release with gh CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 检查 Release 是否已存在，如果存在则删除（用于重新发布）
-          if gh release view v${{ needs.check-version.outputs.version }} >/dev/null 2>&1; then
-            echo "⚠️ Release v${{ needs.check-version.outputs.version }} already exists, deleting..."
-            gh release delete v${{ needs.check-version.outputs.version }} --yes
+          VERSION="${{ needs.check-version.outputs.version }}"
+          
+          # 检查 Release 是否已存在，如果存在则删除
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "⚠️ Release v$VERSION already exists, deleting..."
+            gh release delete "v$VERSION" --yes
           fi
           
-          # 创建新的 Release
-          gh release create v${{ needs.check-version.outputs.version }} \
-            artifacts/**/* \
-            --title "Release v${{ needs.check-version.outputs.version }}" \
+          # 创建新的 Release，上传 artifacts 目录下的所有文件
+          gh release create "v$VERSION" \
+            artifacts/* \
+            --title "Release v$VERSION" \
             --generate-notes \
             --latest
           
-          echo "✅ Release v${{ needs.check-version.outputs.version }} created successfully"
+          echo "✅ Release v$VERSION created successfully"
