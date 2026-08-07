@@ -48,18 +48,45 @@ jobs:
     strategy:
       matrix:
         include:
+          # ============================================
+          # x86_64 架构
+          # ============================================
+
+          # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             asset_name: grrs
             display_name: grrs-linux-x64
+
+          # Windows x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             asset_name: grrs.exe
             display_name: grrs-windows-x64.exe
-          - os: macos-latest
+
+          # macOS x86_64 (Intel)
+          - os: macos-13
             target: x86_64-apple-darwin
             asset_name: grrs
             display_name: grrs-macos-x64
+
+          # ============================================
+          # ARM64 架构
+          # ============================================
+
+          # Linux ARM64 (原生 ARM 运行器)
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            asset_name: grrs
+            display_name: grrs-linux-arm64
+
+          # Windows ARM64 (预览版)
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            asset_name: grrs.exe
+            display_name: grrs-windows-arm64.exe
+
+          # macOS ARM64 (Apple Silicon)
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: grrs
@@ -106,11 +133,16 @@ jobs:
           # 创建新目录存放重命名后的文件
           mkdir -p artifacts_renamed
           
-          # 移动并重命名文件
+          # 移动并重命名所有文件（所有平台）
+          # x86_64 架构
           mv artifacts/grrs-linux-x64/grrs artifacts_renamed/grrs-linux-x64
-          mv artifacts/grrs-macos-x64/grrs artifacts_renamed/grrs-macos-x64
-          mv artifacts/grrs-macos-arm64/grrs artifacts_renamed/grrs-macos-arm64
           mv artifacts/grrs-windows-x64.exe/grrs.exe artifacts_renamed/grrs-windows-x64.exe
+          mv artifacts/grrs-macos-x64/grrs artifacts_renamed/grrs-macos-x64
+          
+          # ARM64 架构
+          mv artifacts/grrs-linux-arm64/grrs artifacts_renamed/grrs-linux-arm64
+          mv artifacts/grrs-windows-arm64.exe/grrs.exe artifacts_renamed/grrs-windows-arm64.exe
+          mv artifacts/grrs-macos-arm64/grrs artifacts_renamed/grrs-macos-arm64
           
           # 删除旧目录
           rm -rf artifacts
