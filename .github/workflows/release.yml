@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version
+      - name: Get version and create tag
         id: version
         run: |
           VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f2)
@@ -30,14 +30,14 @@ jobs:
           
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "Tag v$VERSION already exists, skipping release"
+            echo "⚠️ Tag v$VERSION already exists"
           else
             echo "should_release=true" >> $GITHUB_OUTPUT
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -a "v$VERSION" -m "Auto-release version $VERSION"
+            git tag -a "v$VERSION" -m "Release v$VERSION"
             git push origin "v$VERSION"
-            echo "Created and pushed tag v$VERSION"
+            echo "✅ Created tag v$VERSION"
           fi
 
   build:
@@ -83,7 +83,6 @@ jobs:
           path: target/${{ matrix.target }}/release/${{ matrix.asset_name }}
           if-no-files-found: error
 
-  # 统一创建 Release
   release:
     name: Create Release
     needs: [check-version, build]
@@ -104,15 +103,21 @@ jobs:
           echo "Downloaded artifacts:"
           find artifacts -type f -exec ls -lh {} \;
 
+      - name: Prepare files for upload
+        run: |
+          # 将文件移动到统一目录，避免子目录结构
+          mkdir -p release_files
+          find artifacts -type f -exec cp {} release_files/ \;
+          ls -la release_files/
+
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: release_files/*
           tag_name: v${{ needs.check-version.outputs.version }}
           name: Release v${{ needs.check-version.outputs.version }}
           generate_release_notes: true
           draft: false
           prerelease: false
-          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
