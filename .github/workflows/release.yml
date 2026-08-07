@@ -98,18 +98,21 @@ jobs:
         with:
           path: artifacts
 
-      - name: Move files to root directory
+      - name: Rename files with platform suffix
         run: |
-          echo "Before moving:"
+          echo "Before renaming:"
           find artifacts -type f -exec ls -lh {} \;
           
-          # 将所有子目录中的文件移动到 artifacts 根目录
-          find artifacts -mindepth 2 -type f -exec mv -v {} artifacts/ \;
+          # 重命名文件，保留平台信息
+          mv artifacts/grrs-linux-x64/grrs artifacts/grrs-linux-x64
+          mv artifacts/grrs-macos-x64/grrs artifacts/grrs-macos-x64
+          mv artifacts/grrs-macos-arm64/grrs artifacts/grrs-macos-arm64
+          mv artifacts/grrs-windows-x64.exe/grrs.exe artifacts/grrs-windows-x64.exe
           
-          # 删除空的子目录
-          find artifacts -mindepth 1 -type d -empty -delete
+          # 清理空目录
+          rm -rf artifacts/*/
           
-          echo "After moving:"
+          echo "Files ready for upload:"
           ls -la artifacts/
 
       - name: Create Release with gh CLI
