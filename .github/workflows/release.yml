@@ -1,10 +1,12 @@
-name: Build and Release
+name: Build Cross-Platform
 
 on:
   push:
-    tags:
-      - 'v*'  # 当推送 v1.0.0 这样的标签时触发
-  workflow_dispatch:  # 允许手动触发
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ created ]
 
 jobs:
   build:
@@ -15,38 +17,34 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: grrs
-            asset_name: grrs-linux-x86_64
+            artifact_name: grep-rs
+            asset_name: grep-rs-linux-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: grrs.exe
-            asset_name: grrs-windows-x86_64.exe
+            artifact_name: grep-rs.exe
+            asset_name: grep-rs-windows-x64.exe
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: grrs
-            asset_name: grrs-macos-x86_64
+            artifact_name: grep-rs
+            asset_name: grep-rs-macos-x64
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact_name: grrs
-            asset_name: grep-rs-macos-aarch64
+            artifact_name: grep-rs
+            asset_name: grep-rs-macos-arm64
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build release binary
+      - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Upload binary to release
-        uses: svenstaro/upload-release-action@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          tag: ${{ github.ref }}
-          overwrite: true
+          name: ${{ matrix.asset_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
