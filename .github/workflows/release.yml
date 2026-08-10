@@ -64,11 +64,11 @@ jobs:
             asset_name: grrs.exe
             display_name: grrs-windows-x64.exe
 
-          # macOS x86_64 (Intel)
-          - os: macos-13
-            target: x86_64-apple-darwin
-            asset_name: grrs
-            display_name: grrs-macos-x64
+          ## macOS x86_64 (Intel)
+          #- os: macos-13
+          #  target: x86_64-apple-darwin
+          #  asset_name: grrs
+          #  display_name: grrs-macos-x64
 
           # ============================================
           # ARM64 架构
