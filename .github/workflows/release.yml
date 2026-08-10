@@ -137,7 +137,7 @@ jobs:
           # x86_64 架构
           mv artifacts/grrs-linux-x64/grrs artifacts_renamed/grrs-linux-x64
           mv artifacts/grrs-windows-x64.exe/grrs.exe artifacts_renamed/grrs-windows-x64.exe
-          mv artifacts/grrs-macos-x64/grrs artifacts_renamed/grrs-macos-x64
+          #mv artifacts/grrs-macos-x64/grrs artifacts_renamed/grrs-macos-x64
           
           # ARM64 架构
           mv artifacts/grrs-linux-arm64/grrs artifacts_renamed/grrs-linux-arm64
